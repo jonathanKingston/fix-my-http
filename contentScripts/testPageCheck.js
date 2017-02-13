@@ -1,6 +1,10 @@
 function looksLikeATestPage() {
-  const heading = document.querySelector('body > h1:nth-child(1)');
+  const heading = document.querySelector("body > h1:nth-child(1)");
   if (heading && heading.textContent.startsWith("Apache 2 Test Page")) {
+    return true;
+  }
+  const nginxHeading = document.querySelector("html body h1");
+  if (nginxHeading && nginxHeading.textContent == "Welcome to nginx!") {
     return true;
   }
   return false;
