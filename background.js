@@ -10,6 +10,20 @@ browser.webRequest.onBeforeRequest.addListener(evt => {
 },
 ["blocking"]);
 
+// Upgrade all https internet archive URLs to be https
+browser.webRequest.onBeforeRequest.addListener(evt => {
+  const hrefMatcher = /^\/web\/[^\/]+\/(https:\/\/.*)/;
+  const pageUrl = new URL(evt.url);
+  const httpsMatch = pageUrl.pathname.match(hrefMatcher);
+  if (httpsMatch != null) {
+    return {redirectUrl: httpsMatch[1]};
+  }
+}, {
+  urls: ["https://web.archive.org/web/*"],
+  types: ["main_frame"]
+},
+["blocking"]);
+
 function changeUrl(tabId, url) {
   browser.tabs.update(tabId, {
     url: url
@@ -39,6 +53,7 @@ function handleError(responseDetails) {
   if (responseDetails.frameId !== 0) {
     return;
   }
+  console.log('Got error', responseDetails);
 
   if (!responseDetails.url.startsWith(savePath)) {
     changeUrl(responseDetails.tabId, "about:blank");
@@ -47,9 +62,7 @@ function handleError(responseDetails) {
 
     const fetchUrl = "https://archive.org/wayback/available?url=" + url;
     fetch(fetchUrl).then((e) => {
-      console.log('eee', e);
       e.json().then((r) => {
-        console.log('json res', r)
         const closest = getClosest(r);
         if (closest) {
           changeUrl(responseDetails.tabId, r["archived_snapshots"]["closest"]["url"]);
