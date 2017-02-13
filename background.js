@@ -1,3 +1,5 @@
+const splashURL = browser.extension.getURL("content/splash.html");
+
 // Upgrade all URLs to be https
 browser.webRequest.onBeforeRequest.addListener(evt => {
   const url = new URL(evt.url);
@@ -65,7 +67,7 @@ function handleError(responseDetails) {
   console.log('Got error', responseDetails);
 
   if (!responseDetails.url.startsWith(savePath)) {
-    changeUrl(responseDetails.tabId, "about:blank");
+    changeUrl(responseDetails.tabId, splashURL);
     const url = new URL(responseDetails.url);
     url.protocol = "http:";
 
