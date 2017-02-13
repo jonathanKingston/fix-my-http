@@ -53,6 +53,14 @@ function handleError(responseDetails) {
   if (responseDetails.frameId !== 0) {
     return;
   }
+  // Filter requests that don't happen in a tab
+  if (responseDetails.tabId === -1) {
+    return;
+  }
+  // This happens because ddg or other pages use location.replace before the window finishes loading
+  if (responseDetails.error === "NS_BINDING_ABORTED") {
+    return;
+  }
   console.log('Got error', responseDetails);
 
   if (!responseDetails.url.startsWith(savePath)) {
@@ -79,7 +87,7 @@ function handleError(responseDetails) {
 browser.webRequest.onErrorOccurred.addListener(
   handleError,
   {
-    urls: ["<all_urls>"],
+    urls: ["https://*/*"],
     types: ["main_frame"]
   }
 );

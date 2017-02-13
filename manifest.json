@@ -25,6 +25,12 @@
       "all_frames": false
     },
     {
+      "matches": ["http://*/*"],
+      "js": ["contentScripts/httpPage.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    },
+    {
       "matches": ["https://*/*"],
       "js": ["contentScripts/testPageCheck.js"],
       "all_frames": false
