@@ -7,6 +7,7 @@ browser.webRequest.onBeforeRequest.addListener(evt => {
   }
 }, {
   urls: ["http://*/*"],
+  types: ["main_frame", "sub_frame"]
 },
 ["blocking"]);
 
@@ -100,5 +101,36 @@ browser.webRequest.onCompleted.addListener(
   {
     urls: ["https://*/*"],
     types: ["main_frame"]
-  }
+  },
+  ["responseHeaders"]
+);
+
+// Upgrade-Insecure-Requests should make the redirection function less hot which hopefully should be a perf win
+// It should also solve mixed content icons from the extension not catching requests too.
+browser.webRequest.onHeadersReceived.addListener(
+  (responseDetails) => {
+    const uir = "upgrade-insecure-requests;";
+    const cspHeader = "content-security-policy";
+    let CSP = false;
+    responseDetails.responseHeaders.map((header => {
+      if (header.name.toLowerCase() === cspHeader) {
+        CSP = true;
+        header.value += `; ${uir}`;
+      }
+      return header;
+    }));
+    if (!CSP) {
+      const CSPHeader = {
+        name: cspHeader,
+        value: uir
+      };
+      responseDetails.responseHeaders.push(CSPHeader);
+    }
+    return {responseHeaders: responseDetails.responseHeaders};
+  },
+  {
+    urls: ["<all_urls>"],
+    types: ["main_frame", "sub_frame"]
+  },
+  ["blocking", "responseHeaders"]
 );
