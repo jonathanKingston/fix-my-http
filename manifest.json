@@ -1,0 +1,30 @@
+{
+  "manifest_version": 2,
+
+  "name": "Fix my HTTP",
+  "description": "Makes HTTP pages go away",
+  "version": "0.0.1",
+  "icons": {
+    "128": "images/extensionIcon.svg"
+  },
+  "permissions": [
+    "activeTab",
+    "webRequest",
+    "webRequestBlocking",
+    "tabs",
+    "<all_urls>"
+  ],
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://web.archive.org/*"],
+      "js": ["archiveUsability.js"]
+    },
+    {
+      "matches": ["https://*/*"],
+      "js": ["testPageCheck.js"]
+    }
+  ]
+}
