@@ -41,7 +41,9 @@ function reloadIfError() {
     }
     if (errorHeader.textContent == noIndexError) {
       // Message background script to store origin to be loaded into a container
-      // TODO
+      browser.runtime.sendMessage({
+        loadJail: true
+      });
       return true;
     }
   }

@@ -1,4 +1,5 @@
 const splashURL = browser.extension.getURL("content/splash.html");
+const jailURL = browser.extension.getURL("content/jail.html");
 const archiveSavePath = "https://web.archive.org/save/";
 const pageTimeout = 3000;
 
@@ -33,6 +34,7 @@ function checkForTimeout(requestId) {
   getInfo(requestId).then((request) => {
     if (request) {
       browser.tabs.get(request.tabId).then((tab) => {
+        // Current loading page uses these params
         if (tab.status == "loading" && tab.url == "about:blank") {
           changeUrl(request.tabId, archiveSavePath + request.url);
         }
@@ -45,7 +47,7 @@ function checkForTimeout(requestId) {
 // Upgrade all URLs to be https
 browser.webRequest.onBeforeRequest.addListener(evt => {
   const url = new URL(evt.url);
-  if (url.protocol == 'http:') {
+  if (url.protocol == 'http:' && !isInJail(evt)) {
     url.protocol = 'https:';
 
     storeInfo(evt.requestId, {
@@ -73,10 +75,52 @@ browser.webRequest.onBeforeRequest.addListener(evt => {
     return {redirectUrl: httpsMatch[1]};
   }
 }, {
-  urls: ["https://web.archive.org/web/*"],
+  urls: ["https://web.archive.org/web/https://*"],
   types: ["main_frame"]
 },
 ["blocking"]);
+
+function loadJail(tabId, url) {
+  changeUrl(tabId, `${jailURL}?url=${url}`);
+}
+
+function getPageUrl(currentUrl) {
+  const matchArchive = /^https:\/\/web.archive.org\/.*\/(https?:\/\/.*)/;
+  const pageMatch = currentUrl.match(matchArchive);
+  if (pageMatch) {
+    return pageMatch[1].replace('https:', 'http:');
+  }
+  return false;
+}
+
+browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.loadJail == true) {
+    if (sender.tab) {
+      request.tabId = sender.tab.id;
+    }
+    const tabId = Number(request.tabId);
+    browser.tabs.get(tabId).then(tab => {
+      const url = getPageUrl(tab.url);
+      if (url) {
+        browser.pageAction.hide(tabId);
+        loadJail(tabId, url);
+      }
+    })
+  }
+});
+
+browser.webRequest.onBeforeRequest.addListener(evt => {
+  const tabId = evt.tabId;
+  browser.pageAction.setPopup({
+    tabId,
+    popup: `popup/index.html?tabId=${tabId}`
+  });
+  browser.pageAction.show(tabId);
+}, {
+  urls: ["https://web.archive.org/*"],
+  types: ["main_frame"]
+},
+[]);
 
 function changeUrl(tabId, url) {
   browser.tabs.update(tabId, {
@@ -147,7 +191,6 @@ browser.webRequest.onErrorOccurred.addListener(
 // Check issues in uprated http requests
 browser.webRequest.onCompleted.addListener(
   (details) => {
-    console.log("onCompleted: " + details.url, details);
     getInfo(details.requestId).then(request => {
       if (request) {
         console.log("Successfully uplifted request!", details, request);
@@ -162,27 +205,54 @@ browser.webRequest.onCompleted.addListener(
   ["responseHeaders"]
 );
 
+function isInJail(responseDetails) {
+  const path = responseDetails.originUrl;
+  const framingExemptOrigin = jailURL;
+  const nullOrigin = "moz-nullprincipal:";
+  if (!path) {
+    return false;
+  }
+  return (path.startsWith(framingExemptOrigin) || path.startsWith(nullOrigin)) && responseDetails.type == "sub_frame";
+}
+
 // Upgrade-Insecure-Requests should make the redirection function less hot which hopefully should be a perf win
 // It should also solve mixed content icons from the extension not catching requests too.
 browser.webRequest.onHeadersReceived.addListener(
   (responseDetails) => {
     const uir = "upgrade-insecure-requests;";
     const cspHeader = "content-security-policy";
+    const framing = "x-frame-options";
+    const allowFraming = isInJail(responseDetails)
     let CSP = false;
+
     responseDetails.responseHeaders.map((header => {
-      if (header.name.toLowerCase() === cspHeader) {
-        CSP = true;
-        header.value += `; ${uir}`;
+      switch (header.name.toLowerCase()) {
+        case cspHeader:
+          CSP = true;
+          if (allowFraming) {
+            header.value = header.value.replace(/frame-ancestors [^;]*;/, "");
+          } else {
+            // We can't upgrade in the jail as it will break requests
+            header.value += `; ${uir}`;
+          }
+          break;
+        case framing:
+          if (allowFraming) {
+            header.name = `disabled-${framing}`;
+          }
+          break;
       }
       return header;
     }));
-    if (!CSP) {
+    // If we have no CSP already and are not in the jail
+    if (!CSP && !allowFraming) {
       const CSPHeader = {
         name: cspHeader,
         value: uir
       };
       responseDetails.responseHeaders.push(CSPHeader);
     }
+
     return {responseHeaders: responseDetails.responseHeaders};
   },
   {

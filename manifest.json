@@ -18,6 +18,14 @@
   "background": {
     "scripts": ["background.js"]
   },
+  "page_action": {
+    "browser_style": true,
+    "default_icon": {
+      "128": "images/extensionIcon.svg"
+    },
+    "default_title": "Fix my HTTP",
+    "default_popup": "popup/index.html"
+  },
   "content_scripts": [
     {
       "matches": ["https://web.archive.org/*"],

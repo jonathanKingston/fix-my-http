@@ -1,0 +1,42 @@
+<html>
+  <head>
+    <title>Sandboxed HTTP</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        height: 100%;
+        width: 100%;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+      }
+      header {
+        text-align: center;
+        color: red;
+        max-block-size: 20px;
+      }
+      header img {
+        max-block-size: 20px;
+      }
+      main {
+        display: flex;
+      }
+      iframe {
+        border: 2px solid red;
+        flex: 1;
+        height: calc(100vh - 20px);
+        filter: grayscale(60%) contrast(95%);
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img src="../images/extensionIcon.svg" />
+      This is an insecure page
+    </header>
+    <main>
+      <iframe sandbox="allow-scripts allow-forms allow-same-origin" src="splash.html" ></iframe>
+    </main>
+    <script src="jail.js" ></script>
+  </body>
+</html>
