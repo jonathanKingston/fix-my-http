@@ -64,9 +64,28 @@ function closeModal() {
 function checkForRedirect() {
   const redirectError = document.querySelector('#error .impatient a[href]');
   if (redirectError) {
-    const hrefMatch = redirectError.getAttribute('href').match(hrefMatcher);
-    if (hrefMatch != null) {
-      location.href = hrefMatch[1];
+    const archiveUrl = getArchiveUrl(redirectError.getAttribute('href'));
+    if (archiveUrl) {
+      location.href = archiveUrl;
+      return true;
+    }
+  }
+}
+
+function getArchiveUrl(path) {
+  const urlMatch = path.match(hrefMatcher);
+  if (urlMatch != null) {
+    return urlMatch[1];
+  }
+  return false;
+}
+
+function checkForSaveLink() {
+  const saveLink = document.querySelector("#livewebInfo > p > b > a[href]");
+  if (saveLink) {
+    const saveUrl = saveLink.getAttribute("href");
+    if (saveUrl) {
+      location.href = saveUrl;
       return true;
     }
   }
@@ -75,6 +94,9 @@ function checkForRedirect() {
 function checkPageForErrors() {
   const elem = document.getElementById("__wb_record_content_done");
   if (checkForRedirect()) {
+    return true;
+  }
+  if (checkForSaveLink()) {
     return true;
   }
   if (reloadIfError()) {
