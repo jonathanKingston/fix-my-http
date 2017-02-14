@@ -1,10 +1,61 @@
 const splashURL = browser.extension.getURL("content/splash.html");
+const archiveSavePath = "https://web.archive.org/save/";
+const pageTimeout = 3000;
+
+function getKey(requestId) {
+  return `r_${requestId}`;
+}
+
+function storeInfo(requestId, data) {
+  return browser.storage.local.set({
+    [getKey(requestId)]: data
+  });
+}
+
+function getInfo(requestId) {
+  const key = getKey(requestId);
+  return browser.storage.local.get([key]).then((res) => {
+    if (res && key in res) {
+      return res[key];
+    }
+    return false;
+  });
+}
+
+function deleteInfo(requestId) {
+  const key = getKey(requestId);
+  browser.storage.local.remove(key);
+}
+
+// Pages sometimes timeout when uprating to https
+// This function checks for the loading which onErrorOcurred doesn't catch
+function checkForTimeout(requestId) {
+  getInfo(requestId).then((request) => {
+    if (request) {
+      browser.tabs.get(request.tabId).then((tab) => {
+        if (tab.status == "loading" && tab.url == "about:blank") {
+          changeUrl(request.tabId, archiveSavePath + request.url);
+        }
+      });
+      deleteInfo(requestId);
+    }
+  });
+}
 
 // Upgrade all URLs to be https
 browser.webRequest.onBeforeRequest.addListener(evt => {
   const url = new URL(evt.url);
   if (url.protocol == 'http:') {
-    url.protocol='https:';
+    url.protocol = 'https:';
+
+    storeInfo(evt.requestId, {
+      url: evt.url,
+      tabId: evt.tabId,
+      uplifted: true
+    }).then((r) => {
+      setTimeout(() => checkForTimeout(evt.requestId), pageTimeout);
+    });
+
     return {redirectUrl: String(url)};
   }
 }, {
@@ -52,7 +103,6 @@ function getClosest(r) {
 }
 
 function handleError(responseDetails) {
-  const savePath = "https://web.archive.org/save/";
   if (responseDetails.frameId !== 0) {
     return;
   }
@@ -64,9 +114,8 @@ function handleError(responseDetails) {
   if (responseDetails.error === "NS_BINDING_ABORTED") {
     return;
   }
-  console.log('Got error', responseDetails);
 
-  if (!responseDetails.url.startsWith(savePath)) {
+  if (!responseDetails.url.startsWith(archiveSavePath)) {
     changeUrl(responseDetails.tabId, splashURL);
     const url = new URL(responseDetails.url);
     url.protocol = "http:";
@@ -78,7 +127,7 @@ function handleError(responseDetails) {
         if (closest) {
           changeUrl(responseDetails.tabId, r["archived_snapshots"]["closest"]["url"]);
         } else {
-          changeUrl(responseDetails.tabId, savePath + url);
+          changeUrl(responseDetails.tabId, archiveSavePath + url);
         }
       });
     });
@@ -98,7 +147,13 @@ browser.webRequest.onErrorOccurred.addListener(
 // Check issues in uprated http requests
 browser.webRequest.onCompleted.addListener(
   (details) => {
-    console.log('onCompleted: ' + details.url, details);
+    console.log("onCompleted: " + details.url, details);
+    getInfo(details.requestId).then(request => {
+      if (request) {
+        console.log("Successfully uplifted request!", details, request);
+        deleteInfo(details.requestId);
+      }
+    });
   },
   {
     urls: ["https://*/*"],
