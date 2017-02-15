@@ -19,7 +19,7 @@ function loadArchivePage() {
     if (url.protocol == 'https:') {
       url.protocol = "http:";
 
-      window.location.href = url;
+      window.location.replace(url);
     }
   }
 }

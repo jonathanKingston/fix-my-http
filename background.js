@@ -109,6 +109,7 @@ browser.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
+/*
 browser.webRequest.onBeforeRequest.addListener(evt => {
   const tabId = evt.tabId;
   browser.pageAction.setPopup({
@@ -117,10 +118,22 @@ browser.webRequest.onBeforeRequest.addListener(evt => {
   });
   browser.pageAction.show(tabId);
 }, {
-  urls: ["https://web.archive.org/*"],
+  urls: ["<all_urls>"],
+//  urls: ["https://web.archive.org/*"],
   types: ["main_frame"]
 },
 []);
+*/
+
+browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (tab.url.startsWith("https://web.archive.org/")) {
+    browser.pageAction.setPopup({
+      tabId,
+      popup: `popup/index.html?tabId=${tabId}`
+    });
+    browser.pageAction.show(tabId);
+  }
+});
 
 function changeUrl(tabId, url) {
   browser.tabs.update(tabId, {

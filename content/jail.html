@@ -13,6 +13,9 @@
       header {
         text-align: center;
         color: red;
+        display: flex;
+        justify-content: center;
+        align-items: center;
         max-block-size: 20px;
       }
       header img {
@@ -25,17 +28,32 @@
         border: 2px solid red;
         flex: 1;
         height: calc(100vh - 20px);
+      }
+/*
         filter: grayscale(60%) contrast(95%);
+        filter: url("../images/filters.svg#gammaRed");
+*/
+      iframe:not(.removed) {
+        filter: sepia(1) hue-rotate(-40deg) saturate(2);
+      }
+      header input {
+        flex: 1;
+        border: 0;
+        margin-inline-start: 3px;
       }
     </style>
   </head>
   <body>
     <header>
       <img src="../images/extensionIcon.svg" />
-      This is an insecure page
+      Insecure Page
+      <input type="search" />
     </header>
     <main>
-      <iframe sandbox="allow-scripts allow-forms allow-same-origin" src="splash.html" ></iframe>
+      <iframe
+        referrerpolicy="origin-when-cross-origin"
+        sandbox="allow-scripts allow-forms allow-same-origin"
+        src="splash.html" ></iframe>
     </main>
     <script src="jail.js" ></script>
   </body>
